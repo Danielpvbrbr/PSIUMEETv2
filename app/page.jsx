@@ -25,9 +25,7 @@ const inter = Inter({
 const displayFont = { fontFamily: "var(--font-display)" };
 const monoFont = { fontFamily: "var(--font-mono)" };
 
-// ---- Painel "sessão ao vivo" — elemento de assinatura -------------------
-// Ticka duração + latência e um pequeno log de eventos de conexão, para
-// materializar visualmente a robustez da infra (reconexão, bitrate etc).
+// ---- Painel "Sessão ao vivo" (Simulação) ------------------------------------
 
 const EVENTOS_SESSAO = [
   "PARTICIPANTE_CONECTOU",
@@ -44,9 +42,7 @@ function PainelSessao() {
   const [segundos, setSegundos] = useState(4);
   const [latencia, setLatencia] = useState(28);
   const [conectados, setConectados] = useState(1);
-  const [log, setLog] = useState([
-    { id: 1, evento: "SALA_CRIADA" },
-  ]);
+  const [log, setLog] = useState([{ id: 1, evento: "SALA_CRIADA" }]);
   const contador = useRef(1);
 
   useEffect(() => {
@@ -82,18 +78,14 @@ function PainelSessao() {
 
   return (
     <div className="rounded-lg border border-[#232932] bg-[#12151b] overflow-hidden">
-      {/* topo: ao vivo + duração + latência */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#232932]">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
             <span className="rec-ping absolute inline-flex h-full w-full rounded-full bg-[#4ade9f] opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-[#4ade9f]"></span>
           </span>
-          <span
-            className="text-[11px] tracking-wider text-[#7fe8bb]"
-            style={monoFont}
-          >
-            AO VIVO
+          <span className="text-[11px] tracking-wider text-[#7fe8bb]" style={monoFont}>
+            STREAM ATIVO
           </span>
         </div>
         <div className="flex items-center gap-4">
@@ -106,13 +98,12 @@ function PainelSessao() {
         </div>
       </div>
 
-      {/* participantes conectando */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-[#232932]">
         <div className="flex -space-x-2">
           {NOMES_DEMO.map((iniciais, i) => (
             <div
               key={iniciais}
-              className={`avatar-in w-7 h-7 rounded-full border-2 border-[#12151b] bg-[#1e2530] flex items-center justify-center text-[9px] text-[#c8cdd6] transition-opacity duration-500 ${
+              className={`w-7 h-7 rounded-full border-2 border-[#12151b] bg-[#1e2530] flex items-center justify-center text-[9px] text-[#c8cdd6] transition-opacity duration-500 ${
                 i < conectados ? "opacity-100" : "opacity-0"
               }`}
               style={monoFont}
@@ -122,11 +113,10 @@ function PainelSessao() {
           ))}
         </div>
         <span className="text-[11px] text-[#7d8697]" style={monoFont}>
-          {conectados === NOMES_DEMO.length ? "conectado" : "conectando..."} · P2P direto
+          {conectados === NOMES_DEMO.length ? "sincronizado" : "negociando ICE..."} · Conexão P2P
         </span>
       </div>
 
-      {/* waveform de áudio */}
       <div className="flex items-end gap-[3px] h-12 px-5 py-4 border-b border-[#232932]">
         {Array.from({ length: 32 }).map((_, i) => (
           <span
@@ -137,13 +127,9 @@ function PainelSessao() {
         ))}
       </div>
 
-      {/* log de conexão */}
       <div className="px-5 py-4">
-        <div
-          className="text-[10px] tracking-wider text-[#565d6b] mb-2.5"
-          style={monoFont}
-        >
-          EVENTOS DA SESSÃO
+        <div className="text-[10px] tracking-wider text-[#565d6b] mb-2.5" style={monoFont}>
+          LOGS DE TELEMETRIA
         </div>
         <div className="space-y-1.5">
           {log.map((entry) => (
@@ -162,15 +148,13 @@ function PainelSessao() {
       </div>
 
       <div className="px-5 py-2.5 border-t border-[#232932] text-[10px] text-[#4f5866]" style={monoFont}>
-        Simulação ilustrativa — dados fictícios.
+        Simulação visual de telemetria da sala.
       </div>
     </div>
   );
 }
 
-// ---- Mockup de tela de chamada -----------------------------------------
-// Ilustração própria de como fica a chamada dentro do produto — sem
-// fotos, sem clonar UI de terceiros, só formas/gradientes + nossos tokens.
+// ---- Mockup de Tela de Chamada ---------------------------------------------
 
 function IconeMic({ ligado }) {
   return ligado ? (
@@ -217,7 +201,6 @@ function TelaChamada() {
 
   return (
     <div className="rounded-lg border border-[#232932] bg-[#12151b] overflow-hidden">
-      {/* barra do app */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-[#232932] bg-[#151920]">
         <div className="flex gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-[#2e3540]"></div>
@@ -232,9 +215,7 @@ function TelaChamada() {
         </span>
       </div>
 
-      {/* área de vídeo */}
       <div className="relative aspect-video bg-[#0a0c10]">
-        {/* tile principal — participante */}
         <div className="absolute inset-4 sm:inset-6 rounded-md overflow-hidden border border-[#232932] video-gradient-a flex items-center justify-center">
           <div className="relative flex items-center justify-center">
             <span className="speak-ping absolute inline-flex h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-[#4ade9f]/25"></span>
@@ -251,7 +232,6 @@ function TelaChamada() {
           </div>
         </div>
 
-        {/* PiP — você */}
         <div className="absolute bottom-8 right-8 sm:bottom-10 sm:right-10 w-24 h-16 sm:w-32 sm:h-20 rounded-md overflow-hidden border border-[#2e3540] video-gradient-b">
           {cameraLigada ? (
             <div className="w-full h-full flex items-center justify-center">
@@ -275,11 +255,9 @@ function TelaChamada() {
         </div>
       </div>
 
-      {/* controles */}
       <div className="flex items-center justify-center gap-2.5 px-5 py-4 border-t border-[#232932] bg-[#151920]">
         <button
           onClick={() => setMicLigado((v) => !v)}
-          aria-label={micLigado ? "Desligar microfone" : "Ligar microfone"}
           className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors ${
             micLigado
               ? "border-[#2e3540] text-[#c8cdd6] hover:border-[#565d6b]"
@@ -290,7 +268,6 @@ function TelaChamada() {
         </button>
         <button
           onClick={() => setCameraLigada((v) => !v)}
-          aria-label={cameraLigada ? "Desligar câmera" : "Ligar câmera"}
           className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors ${
             cameraLigada
               ? "border-[#2e3540] text-[#c8cdd6] hover:border-[#565d6b]"
@@ -299,17 +276,13 @@ function TelaChamada() {
         >
           <IconeCamera ligada={cameraLigada} />
         </button>
-        <button
-          aria-label="Compartilhar tela"
-          className="w-9 h-9 rounded-full flex items-center justify-center border border-[#2e3540] text-[#c8cdd6] hover:border-[#565d6b] transition-colors"
-        >
+        <button className="w-9 h-9 rounded-full flex items-center justify-center border border-[#2e3540] text-[#c8cdd6] hover:border-[#565d6b] transition-colors">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
             <rect x="1.5" y="2.5" width="13" height="8.5" rx="1.4" stroke="currentColor" strokeWidth="1.3" />
             <path d="M8 14v-3M5.5 14h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
           </svg>
         </button>
         <button
-          aria-label="Encerrar chamada"
           className="h-9 px-4 rounded-full flex items-center justify-center gap-1.5 bg-[#ff4438] hover:bg-[#ff5b50] text-white text-[12px] font-medium transition-colors"
           style={monoFont}
         >
@@ -319,8 +292,8 @@ function TelaChamada() {
     </div>
   );
 }
-// Troque as URLs abaixo pelas rotas reais do seu backend (ex.: rotas
-// Passport.js tipo GET /api/auth/google e GET /api/auth/github).
+
+// ---- Modal de Autenticação (Dev-to-Dev) ------------------------------------
 
 function entrarComProvedor(provedor) {
   window.location.href = `/api/auth/${provedor}`;
@@ -342,7 +315,6 @@ function ModalAutenticacao({ aberto, onFechar }) {
       className="fixed inset-0 z-[100] flex items-center justify-center px-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Criar conta"
     >
       <div
         className="absolute inset-0 bg-[#040507]/80 backdrop-blur-sm modal-fade"
@@ -352,31 +324,21 @@ function ModalAutenticacao({ aberto, onFechar }) {
       <div className="relative w-full max-w-sm rounded-lg border border-[#232932] bg-[#12151b] p-7 modal-pop">
         <button
           onClick={onFechar}
-          aria-label="Fechar"
           className="absolute top-4 right-4 text-[#565d6b] hover:text-[#c8cdd6] transition-colors"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M2.5 2.5L13.5 13.5M13.5 2.5L2.5 13.5"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-            />
+            <path d="M2.5 2.5L13.5 13.5M13.5 2.5L2.5 13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
           </svg>
         </button>
 
-        <div
-          className="text-[10px] text-[#e6c874] tracking-wider mb-3"
-          style={monoFont}
-        >
-          GRÁTIS NO BETA
+        <div className="text-[10px] text-[#4ade9f] tracking-wider mb-3" style={monoFont}>
+          FREE TIER · RATE LIMITED
         </div>
         <h2 className="text-[22px] text-[#f4f5f7] mb-1.5" style={displayFont}>
-          Crie sua conta
+          Acesso à API
         </h2>
         <p className="text-[13px] text-[#7d8697] mb-6 leading-relaxed">
-          Sem cartão de crédito. Sua primeira sala fica pronta assim que
-          você entra.
+          Autentique-se para provisionar sua API Key. O uso gratuito é regido pela nossa Política de Fair Use.
         </p>
 
         <div className="space-y-2.5">
@@ -385,22 +347,10 @@ function ModalAutenticacao({ aberto, onFechar }) {
             className="w-full flex items-center justify-center gap-2.5 bg-[#edeff3] hover:bg-white text-[#1a1e26] font-medium py-2.5 px-4 rounded-md text-[13px] transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 18 18">
-              <path
-                fill="#4285F4"
-                d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"
-              />
-              <path
-                fill="#34A853"
-                d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.94v2.33A9 9 0 009 18z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M3.97 10.72A5.4 5.4 0 013.68 9c0-.6.1-1.18.29-1.72V4.95H.94A9 9 0 000 9c0 1.45.35 2.83.94 4.05l3.03-2.33z"
-              />
-              <path
-                fill="#EA4335"
-                d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 00.94 4.95l3.03 2.33C4.68 5.16 6.66 3.58 9 3.58z"
-              />
+              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" />
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.94v2.33A9 9 0 009 18z" />
+              <path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 013.68 9c0-.6.1-1.18.29-1.72V4.95H.94A9 9 0 000 9c0 1.45.35 2.83.94 4.05l3.03-2.33z" />
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 00.94 4.95l3.03 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
             </svg>
             Continuar com Google
           </button>
@@ -417,21 +367,25 @@ function ModalAutenticacao({ aberto, onFechar }) {
         </div>
 
         <p className="text-[10px] text-[#4f5866] text-center mt-6" style={monoFont}>
-          Ao continuar, você concorda com os termos de uso.
+          Ao autenticar, você aceita nosso SLA e termos de uso.
         </p>
       </div>
     </div>
   );
 }
 
+// ---- Página Principal ------------------------------------------------------
+
 export default function Home() {
   const [carregando, setCarregando] = useState(false);
   const [dadosSala, setDadosSala] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
+  const [tempoRequest, setTempoRequest] = useState(0); 
 
   const criarSalaDemo = async () => {
     setCarregando(true);
     setDadosSala(null);
+    const inicioRequisicao = performance.now(); 
 
     try {
       const agora = new Date();
@@ -445,14 +399,16 @@ export default function Home() {
           "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
-          nomeSala: "Sala de Demonstração - PsiuMeet",
-          idAgendamentoExterno: "DEMO-2026-9081",
+          nomeSala: "Sessão Técnica Sandbox",
+          idAgendamentoExterno: "DEV-ENV-9081",
           horarioInicio: inicio.toISOString(),
           horarioFim: fim.toISOString(),
         }),
       });
 
       const data = await res.json();
+      const fimRequisicao = performance.now(); 
+      setTempoRequest(Math.round(fimRequisicao - inicioRequisicao));
 
       if (data.sucesso) {
         setDadosSala(data);
@@ -525,7 +481,10 @@ export default function Home() {
         .speak-ping { animation: speakPing 2.2s ease-out infinite; }
 
         @media (prefers-reduced-motion: reduce) {
-          .rec-ping, .wave-bar, .ledger-row, .modal-fade, .modal-pop, .video-gradient-a, .video-gradient-b, .speak-ping { animation: none !important; }
+          .rec-ping, .wave-bar, .ledger-row, .modal-fade, .modal-pop,
+          .video-gradient-a, .video-gradient-b, .speak-ping {
+            animation: none !important;
+          }
         }
       `}</style>
 
@@ -540,43 +499,35 @@ export default function Home() {
               </svg>
             </div>
             <div className="flex items-baseline gap-1 leading-none">
-              <span className="text-[17px] italic" style={displayFont}>
-                Psiu
-              </span>
-              <span
-                className="text-[13px] tracking-wide text-[#8b93a2]"
-                style={monoFont}
-              >
-                MEET
-              </span>
+              <span className="text-[17px] italic" style={displayFont}>Psiu</span>
+              <span className="text-[13px] tracking-wide text-[#8b93a2]" style={monoFont}>MEET</span>
             </div>
           </div>
 
           <div className="flex items-center gap-6">
             <div
-              className="hidden sm:flex items-center gap-2 text-[11px] text-[#e6c874] border border-[#3a3320] bg-[#1c1808]/60 rounded-full px-2.5 py-1"
+              className="hidden sm:flex items-center gap-2 text-[11px] text-[#7fe8bb] border border-[#1c2a25] bg-[#0f1915]/60 rounded-full px-2.5 py-1"
               style={monoFont}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#e6c874]"></span>
-              GRÁTIS NO BETA
+              <span className="w-1.5 h-1.5 rounded-full bg-[#4ade9f]"></span>
+              API ACTIVE
             </div>
             <Link
               href="/docs"
               className="hidden sm:block text-[13px] text-[#a8afbb] hover:text-[#edeff3] transition-colors"
             >
-              Documentação
+              Documentação API
             </Link>
             <button
               onClick={() => setModalAberto(true)}
               className="text-[13px] bg-[#edeff3] hover:bg-white text-[#0a0c10] font-medium py-2 px-4 rounded-md transition-colors"
             >
-              Começar grátis
+              Obter Access Token
             </button>
           </div>
         </div>
       </header>
 
-      {/* MAIN */}
       <main className="flex-grow">
         {/* HERO */}
         <div className="max-w-6xl mx-auto px-6 pt-20 pb-24">
@@ -586,21 +537,19 @@ export default function Home() {
                 className="text-[11px] text-[#7d8697] mb-6 tracking-[0.15em] uppercase"
                 style={monoFont}
               >
-                Infra de WebRTC · Conexão P2P · Chamadas 1:1
+                Infraestrutura WebRTC · Sinalização P2P · Logs Forenses
               </div>
 
               <h1
                 className="text-[44px] md:text-[56px] leading-[1.08] mb-6 text-[#f4f5f7]"
                 style={displayFont}
               >
-                Chamada de vídeo, <em className="text-[#7fe8bb] not-italic font-medium">pronta pra integrar.</em>
+                Infraestrutura de vídeo 1:1.<br />
+                <em className="text-[#7fe8bb] not-italic font-medium">Pronta para auditoria.</em>
               </h1>
 
               <p className="text-[#9aa2b1] text-[16px] md:text-[17px] leading-relaxed max-w-xl mb-9">
-                PsiuMeet é a infraestrutura de vídeo que você pluga no seu
-                produto: crie sessões 1 a 1 por API, com conexão P2P direta
-                entre os participantes — nosso servidor entra só pra abrir
-                a sala, o vídeo nunca passa por ele.
+                Uma infraestrutura de vídeo serverless para sessões 1:1. Provisione salas via API REST. A mídia trafega em Peer-to-Peer real. A lógica de sinalização e auditoria forense é por nossa conta.
               </p>
 
               <div className="flex flex-wrap items-center gap-3 mb-8">
@@ -608,33 +557,84 @@ export default function Home() {
                   href="#console"
                   className="bg-[#edeff3] hover:bg-white text-[#0a0c10] font-medium py-2.5 px-5 rounded-md text-sm transition-colors"
                 >
-                  Ver demonstração
+                  Abrir Sandbox
                 </a>
                 <Link
                   href="/docs"
                   className="border border-[#2e3540] hover:border-[#565d6b] text-[#edeff3] py-2.5 px-5 rounded-md text-sm transition-colors"
                 >
-                  Ler documentação
+                  Ler documentação técnica
                 </Link>
               </div>
 
-              <p
-                className="text-[11px] text-[#565d6b] tracking-wide"
-                style={monoFont}
-              >
-                Feito para telemedicina, atendimento, mentorias e
-                entrevistas — qualquer produto que precise de uma chamada
-                1:1 embutida.
-              </p>
+              {/* Sinais de confiança */}
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-[12px] text-[#7d8697]" style={monoFont}>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-[#4ade9f]"></span>
+                  Mídia 100% P2P
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-[#4ade9f]"></span>
+                  Latência típica &lt; 40ms
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-[#4ade9f]"></span>
+                  Gravação Chunking Automática
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-[#4ade9f]"></span>
+                  API-first
+                </span>
+              </div>
             </div>
 
             <PainelSessao />
           </div>
         </div>
 
+        {/* COMO FUNCIONA */}
+        <div className="max-w-6xl mx-auto px-6 pb-24">
+          <div className="text-center mb-12">
+            <div className="text-[11px] text-[#7d8697] mb-4 tracking-[0.15em] uppercase" style={monoFont}>
+              Integration Pipeline
+            </div>
+            <h2 className="text-[26px] md:text-[32px] text-[#f4f5f7]" style={displayFont}>
+              Provisionamento, Sinalização e Stream.
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                step: "01",
+                title: "Provisionamento (API)",
+                desc: "POST na /api/criar-sala retorna instantaneamente os tokens de handshake do host e convidado.",
+              },
+              {
+                step: "02",
+                title: "Sinalização WebRTC",
+                desc: "Clientes inicializam via protocolo WebRTC. A conexão é negociada de forma transparente através de STUN/TURN.",
+              },
+              {
+                step: "03",
+                title: "Stream de Mídia (P2P)",
+                desc: "Vídeo flui diretamente client-to-client. O servidor sai do caminho da mídia pesada após o handshake.",
+              },
+            ].map((item) => (
+              <div key={item.step} className="border border-[#232932] bg-[#12151b] rounded-lg p-6">
+                <div className="text-[11px] text-[#565d6b] mb-3" style={monoFont}>
+                  {item.step}
+                </div>
+                <h3 className="text-[16px] text-[#edeff3] mb-2 font-medium">{item.title}</h3>
+                <p className="text-[13px] text-[#7d8697] leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* CONSOLE / SANDBOX */}
         <div id="console" className="max-w-6xl mx-auto px-6 pb-24 scroll-mt-20">
-          <div className="max-w-2xl mx-auto border border-[#232932] bg-[#12151b] rounded-lg overflow-hidden">
+          <div className="max-w-3xl mx-auto border border-[#232932] bg-[#12151b] rounded-lg overflow-hidden shadow-2xl">
             <div className="px-5 py-3 border-b border-[#232932] flex items-center justify-between bg-[#151920]">
               <div className="flex items-center gap-3">
                 <div className="flex gap-1.5">
@@ -646,125 +646,122 @@ export default function Home() {
                   POST /api/criar-sala
                 </span>
               </div>
-              <span
-                className="text-[10px] text-[#565d6b] uppercase tracking-wider"
-                style={monoFont}
-              >
-                Sandbox
+              <span className="text-[10px] text-[#565d6b] uppercase tracking-wider border border-[#232932] px-2 py-0.5 rounded" style={monoFont}>
+                Sandbox Interativo
               </span>
             </div>
 
-            <div className="p-6">
+            <div className="p-6 md:p-8">
               {!dadosSala ? (
-                <div className="space-y-5">
+                <div className="space-y-6">
+                  {/* Bloco de Código Fake Profissional */}
                   <div
-                    className="bg-[#0a0c10] border border-[#232932] rounded-md p-4 text-[12px] text-[#9aa2b1] leading-relaxed"
+                    className="bg-[#050608] border border-[#1c2129] rounded-md p-5 text-[13px] leading-relaxed overflow-x-auto shadow-inner"
                     style={monoFont}
                   >
-                    <span className="text-[#565d6b]">fetch</span>
-                    <span className="text-[#8b93a2]">(</span>
-                    <span className="text-[#c8cdd6]">&apos;/api/criar-sala&apos;</span>
-                    <span className="text-[#8b93a2]">, {"{"}</span>
+                    <span className="text-[#c678dd]">const</span> <span className="text-[#e5c07b]">response</span> <span className="text-[#56b6c2]">=</span> <span className="text-[#c678dd]">await</span> <span className="text-[#61afef]">fetch</span><span className="text-[#abb2bf]">(</span><span className="text-[#98c379]">&apos;/api/criar-sala&apos;</span><span className="text-[#abb2bf]">, {"{"}</span>
                     <br />
-                    &nbsp;&nbsp;method: <span className="text-[#c8cdd6]">&apos;POST&apos;</span>,
+                    <span className="text-[#abb2bf]">&nbsp;&nbsp;method: </span><span className="text-[#98c379]">&apos;POST&apos;</span><span className="text-[#abb2bf]">,</span>
                     <br />
-                    &nbsp;&nbsp;body: JSON.stringify({"{"} nomeSala: <span className="text-[#c8cdd6]">&apos;Aula ao vivo #104&apos;</span> {"}"})
+                    <span className="text-[#abb2bf]">&nbsp;&nbsp;body: </span><span className="text-[#e5c07b]">JSON</span><span className="text-[#abb2bf]">.</span><span className="text-[#56b6c2]">stringify</span><span className="text-[#abb2bf]">({"{"}</span>
                     <br />
-                    <span className="text-[#8b93a2]">{"}"});</span>
+                    <span className="text-[#abb2bf]">&nbsp;&nbsp;&nbsp;&nbsp;nomeSala: </span><span className="text-[#98c379]">&apos;Sessão Técnica #104&apos;</span>
+                    <br />
+                    <span className="text-[#abb2bf]">&nbsp;&nbsp;{"}"})</span>
+                    <br />
+                    <span className="text-[#abb2bf]">{"}"});</span>
                   </div>
 
                   <button
                     onClick={criarSalaDemo}
                     disabled={carregando}
-                    className="w-full bg-[#edeff3] hover:bg-white disabled:bg-[#2e3540] disabled:text-[#565d6b] text-[#0a0c10] font-medium py-2.5 px-4 rounded-md text-sm transition-colors flex items-center justify-center gap-2"
+                    className="w-full bg-[#edeff3] hover:bg-white disabled:bg-[#2e3540] disabled:text-[#565d6b] text-[#0a0c10] font-medium py-3 px-4 rounded-md text-sm transition-all flex items-center justify-center gap-2"
                   >
                     {carregando ? (
                       <>
-                        <svg
-                          className="animate-spin h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8v8H4z"
-                          ></path>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                         </svg>
-                        Provisionando instância...
+                        Provisionando Container...
                       </>
                     ) : (
-                      "Executar requisição de teste"
+                      "Executar Request (Run)"
                     )}
                   </button>
                 </div>
               ) : (
-                <div className="space-y-5">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className="text-xs text-[#4ade9f]"
-                      style={monoFont}
-                    >
-                      200 OK
-                    </span>
+                <div className="space-y-6 animate-ledgerIn">
+                  {/* Cabeçalho da Resposta */}
+                  <div className="flex items-center justify-between border-b border-[#232932] pb-4">
+                    <div className="flex gap-3 items-center">
+                      <span className="text-[11px] text-[#0a0c10] bg-[#4ade9f] px-2 py-0.5 rounded font-bold" style={monoFont}>
+                        200 OK
+                      </span>
+                      <span className="text-xs text-[#7d8697]" style={monoFont}>
+                        {tempoRequest}ms
+                      </span>
+                    </div>
                     <button
                       onClick={() => setDadosSala(null)}
-                      className="text-xs text-[#7d8697] hover:text-[#c8cdd6] transition-colors"
+                      className="text-xs text-[#7d8697] hover:text-[#edeff3] transition-colors border border-[#232932] px-3 py-1.5 rounded bg-[#151920]"
                     >
-                      Resetar
+                      Limpar Console
                     </button>
                   </div>
 
+                  {/* Resposta JSON com Syntax Highlighting Profissional */}
                   <div
-                    className="bg-[#0a0c10] border border-[#232932] rounded-md p-4 text-[12px] space-y-1.5"
+                    className="bg-[#050608] border border-[#1c2129] rounded-md p-5 text-[13px] leading-relaxed overflow-x-auto shadow-inner"
                     style={monoFont}
                   >
-                    <div>
-                      <span className="text-[#565d6b]">roomId</span>{" "}
-                      <span className="text-[#c8cdd6]">
-                        &quot;{dadosSala.roomId}&quot;
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[#565d6b]">inicio</span>{" "}
-                      <span className="text-[#9aa2b1]">
-                        &quot;{dadosSala.horarios.inicio}&quot;
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[#565d6b]">fim</span>{" "}
-                      <span className="text-[#9aa2b1]">
-                        &quot;{dadosSala.horarios.fim}&quot;
-                      </span>
-                    </div>
+                    <span className="text-[#abb2bf]">{"{"}</span><br />
+                    &nbsp;&nbsp;<span className="text-[#e06c75]">"sucesso"</span><span className="text-[#abb2bf]">: </span><span className="text-[#d19a66]">true</span><span className="text-[#abb2bf]">,</span><br />
+                    &nbsp;&nbsp;<span className="text-[#e06c75]">"roomId"</span><span className="text-[#abb2bf]">: </span><span className="text-[#98c379]">"{dadosSala.roomId}"</span><span className="text-[#abb2bf]">,</span><br />
+                    &nbsp;&nbsp;<span className="text-[#e06c75]">"horarios"</span><span className="text-[#abb2bf]">: {"{"}</span><br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#e06c75]">"inicio"</span><span className="text-[#abb2bf]">: </span><span className="text-[#98c379]">"{dadosSala.horarios?.inicio || new Date().toISOString()}"</span><span className="text-[#abb2bf]">,</span><br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#e06c75]">"fim"</span><span className="text-[#abb2bf]">: </span><span className="text-[#98c379]">"{dadosSala.horarios?.fim || new Date(Date.now() + 15 * 60000).toISOString()}"</span><br />
+                    &nbsp;&nbsp;<span className="text-[#abb2bf]">{"}"},</span><br />
+                    &nbsp;&nbsp;<span className="text-[#e06c75]">"links"</span><span className="text-[#abb2bf]">: {"{"}</span><br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#5c6370] italic">// Endpoints de host e guest prontos para roteamento</span><br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#e06c75]">"host"</span><span className="text-[#abb2bf]">: </span><span className="text-[#98c379]">"{dadosSala.linkProfessor}"</span><span className="text-[#abb2bf]">,</span><br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#e06c75]">"guest"</span><span className="text-[#abb2bf]">: </span><span className="text-[#98c379]">"{dadosSala.linkAluno}"</span><br />
+                    &nbsp;&nbsp;<span className="text-[#abb2bf]">{"}"}</span><br />
+                    <span className="text-[#abb2bf]">{"}"}</span>
                   </div>
 
-                  <div className="pt-1">
-                    <p className="text-xs text-[#7d8697] mb-3">
-                      Links de acesso à sessão
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Cards de "Deployment" para testar */}
+                  <div className="bg-[#151920] border border-[#2e3540] rounded-md p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-2 h-2 rounded-full bg-[#4ade9f] animate-pulse"></div>
+                      <p className="text-[11px] text-[#9aa2b1] tracking-wider uppercase" style={monoFont}>Container Ativo</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <a
                         href={dadosSala.linkProfessor}
                         target="_blank"
-                        className="flex items-center justify-center gap-2 bg-[#1a1e26] hover:bg-[#20242d] text-[#edeff3] text-xs font-medium py-2.5 px-4 rounded-md border border-[#2e3540] transition-colors"
+                        className="group flex flex-col gap-1 bg-[#1a1e26] hover:bg-[#20242d] border border-[#2e3540] hover:border-[#565d6b] rounded p-4 transition-all"
                       >
-                        Instrutor
+                        <span className="text-sm font-medium text-[#edeff3] group-hover:text-white flex items-center justify-between">
+                          Instância do Host
+                          <svg className="w-4 h-4 text-[#565d6b] group-hover:text-[#edeff3] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </span>
+                        <span className="text-[11px] text-[#7d8697]" style={monoFont}>Abrir cliente (Professor)</span>
                       </a>
                       <a
                         href={dadosSala.linkAluno}
                         target="_blank"
-                        className="flex items-center justify-center gap-2 bg-[#1a1e26] hover:bg-[#20242d] text-[#edeff3] text-xs font-medium py-2.5 px-4 rounded-md border border-[#2e3540] transition-colors"
+                        className="group flex flex-col gap-1 bg-[#1a1e26] hover:bg-[#20242d] border border-[#2e3540] hover:border-[#565d6b] rounded p-4 transition-all"
                       >
-                        Participante
+                        <span className="text-sm font-medium text-[#edeff3] group-hover:text-white flex items-center justify-between">
+                          Instância do Convidado
+                          <svg className="w-4 h-4 text-[#565d6b] group-hover:text-[#edeff3] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </span>
+                        <span className="text-[11px] text-[#7d8697]" style={monoFont}>Abrir cliente (Aluno)</span>
                       </a>
                     </div>
                   </div>
@@ -777,22 +774,14 @@ export default function Home() {
         {/* PREVIEW DA CHAMADA */}
         <div className="max-w-6xl mx-auto px-6 pb-24">
           <div className="max-w-2xl mx-auto mb-8 text-center">
-            <div
-              className="text-[11px] text-[#7d8697] mb-4 tracking-[0.15em] uppercase"
-              style={monoFont}
-            >
-              Preview do produto
+            <div className="text-[11px] text-[#7d8697] mb-4 tracking-[0.15em] uppercase" style={monoFont}>
+              UI de Telemetria
             </div>
-            <h2
-              className="text-[26px] md:text-[32px] text-[#f4f5f7] leading-tight mb-3"
-              style={displayFont}
-            >
-              É assim que a chamada aparece dentro do seu app.
+            <h2 className="text-[26px] md:text-[32px] text-[#f4f5f7] leading-tight mb-3" style={displayFont}>
+              Como a sessão é montada na interface.
             </h2>
             <p className="text-[#9aa2b1] text-[15px] leading-relaxed">
-              A tela é sua — isso aqui é só o componente de exemplo que vem
-              pronto. Mic, câmera e compartilhamento de tela funcionam de
-              verdade nesta prévia.
+              O front-end é seu domínio. Componentes de câmera, microfone e controles já vêm abstraídos nos nossos hooks React.
             </p>
           </div>
 
@@ -801,100 +790,73 @@ export default function Home() {
           </div>
         </div>
 
-        {/* FEATURES */}
+        {/* FEATURES TÉCNICAS */}
         <div className="max-w-6xl mx-auto px-6 pb-24">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-[#1c2129] border border-[#1c2129] rounded-lg overflow-hidden">
             <div className="bg-[#0a0c10] p-7">
-              <div
-                className="text-[10px] text-[#7d8697] mb-4 tracking-wider"
-                style={monoFont}
-              >
-                [P2P]
+              <div className="text-[10px] text-[#7d8697] mb-4 tracking-wider" style={monoFont}>
+                [PERFORMANCE]
               </div>
               <h3 className="text-[15px] font-medium text-[#edeff3] mb-2">
-                Vídeo direto, sem intermediário
+                Arquitetura P2P
               </h3>
               <p className="text-[13px] text-[#7d8697] leading-relaxed">
-                Nas sessões 1:1 o vídeo vai direto de um participante pro
-                outro. O servidor só abre a sala — não carrega mídia, então
-                a latência é menor.
+                Nas sessões 1:1, a latência é reduzida ao rotear o vídeo de forma direta entre os clientes. Zero relays pesados.
               </p>
             </div>
 
             <div className="bg-[#0a0c10] p-7">
-              <div
-                className="text-[10px] text-[#7d8697] mb-4 tracking-wider"
-                style={monoFont}
-              >
-                [SALAS]
+              <div className="text-[10px] text-[#7d8697] mb-4 tracking-wider" style={monoFont}>
+                [STORAGE]
               </div>
               <h3 className="text-[15px] font-medium text-[#edeff3] mb-2">
-                Sessão pronta em uma chamada
+                Chunking de Gravação
               </h3>
               <p className="text-[13px] text-[#7d8697] leading-relaxed">
-                Um POST em /api/criar-sala e você já tem link de host e de
-                convidado — sem montar servidor de sinalização do zero.
+                Vídeo exportado e fatiado a cada 10s direto na engine do navegador (MediaRecorder) para não onerar CPU nem dados.
               </p>
             </div>
 
             <div className="bg-[#0a0c10] p-7">
-              <div
-                className="text-[10px] text-[#7d8697] mb-4 tracking-wider"
-                style={monoFont}
-              >
-                [RECONEXÃO]
+              <div className="text-[10px] text-[#7d8697] mb-4 tracking-wider" style={monoFont}>
+                [RESILIÊNCIA]
               </div>
               <h3 className="text-[15px] font-medium text-[#edeff3] mb-2">
-                Ninguém cai da chamada
+                Reconexão ICE
               </h3>
               <p className="text-[13px] text-[#7d8697] leading-relaxed">
-                Se a rede do participante falhar por um instante, a sessão
-                reconecta sozinha, sem precisar entrar de novo na sala.
+                Se a rede oscilar, o STUN repactua os candidatos ICE silenciosamente mantendo o socket ativo para recuperação rápida.
               </p>
             </div>
 
             <div className="bg-[#0a0c10] p-7">
-              <div
-                className="text-[10px] text-[#7d8697] mb-4 tracking-wider"
-                style={monoFont}
-              >
-                [REDE]
+              <div className="text-[10px] text-[#7d8697] mb-4 tracking-wider" style={monoFont}>
+                [ADAPTABILIDADE]
               </div>
               <h3 className="text-[15px] font-medium text-[#edeff3] mb-2">
-                Qualidade que se adapta
+                Bitrate Dinâmico
               </h3>
               <p className="text-[13px] text-[#7d8697] leading-relaxed">
-                O bitrate ajusta sozinho à rede disponível, via WebRTC, pra
-                chamada continuar estável mesmo em conexão instável.
+                A qualidade de vídeo se ajusta com a banda do usuário para manter framerate estável e impedir quedas totais (graceful degradation).
               </p>
             </div>
           </div>
         </div>
 
-        {/* CTA DE VENDA */}
+        {/* CTA FINAL */}
         <div className="max-w-6xl mx-auto px-6 pb-24">
           <div className="rounded-lg border border-[#232932] bg-[#12151b] px-8 py-12 text-center">
-            <div
-              className="inline-block text-[10px] text-[#e6c874] tracking-wider mb-4 border border-[#3a3320] bg-[#1c1808]/60 rounded-full px-3 py-1"
-              style={monoFont}
-            >
-              GRÁTIS DURANTE O BETA
-            </div>
-            <h2
-              className="text-[26px] md:text-[30px] text-[#f4f5f7] mb-3"
-              style={displayFont}
-            >
-              Pronto pra integrar chamada de vídeo no seu produto?
+            <h2 className="text-[26px] md:text-[30px] text-[#f4f5f7] mb-3" style={displayFont}>
+              Integração de vídeo Enterprise-grade.
             </h2>
             <p className="text-[#9aa2b1] text-[15px] mb-7 max-w-lg mx-auto">
-              Teste a API sem custo enquanto estamos em beta. Sem cartão de
-              crédito, sem letra miúda.
+              Arquitetura API-first. Free tier robusto e documentação clara. Elimine a complexidade de gerenciar servidores de sinalização.
             </p>
             <button
               onClick={() => setModalAberto(true)}
               className="inline-block bg-[#edeff3] hover:bg-white text-[#0a0c10] font-medium py-3 px-6 rounded-md text-sm transition-colors"
             >
-              Criar minha primeira sala
+              Gerar API Key
             </button>
           </div>
         </div>
@@ -902,12 +864,41 @@ export default function Home() {
 
       {/* FOOTER */}
       <footer className="border-t border-[#1c2129]">
-        <div
-          className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between text-[11px] text-[#565d6b]"
-          style={monoFont}
-        >
-          <span>PSIUMEET CORE ENGINE</span>
-          <span>API REST · WEBSOCKET TELEMETRY</span>
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded bg-[#edeff3] flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="8" r="6" stroke="#0a0c10" strokeWidth="1.3" />
+                  <circle cx="8" cy="8" r="2" fill="#0a0c10" />
+                </svg>
+              </div>
+              <span className="text-[13px] text-[#9aa2b1]" style={monoFont}>PSIUMEET ENGINE</span>
+            </div>
+
+            <div className="flex flex-wrap gap-6 text-[13px] text-[#7d8697]">
+              <Link href="/docs" className="hover:text-[#edeff3] transition-colors">
+                Documentação
+              </Link>
+              <Link href="/status" className="hover:text-[#edeff3] transition-colors">
+                Status API
+              </Link>
+              <Link href="/privacidade" className="hover:text-[#edeff3] transition-colors">
+                SLA & Termos
+              </Link>
+              <a href="mailto:api@psiumeeet.com" className="hover:text-[#edeff3] transition-colors">
+                Suporte Dev
+              </a>
+            </div>
+          </div>
+
+          <div
+            className="mt-8 pt-6 border-t border-[#1c2129] flex items-center justify-between text-[11px] text-[#4f5866]"
+            style={monoFont}
+          >
+            <span>© 2026 PsiuMeet Cloud</span>
+            <span>API REST · Socket.io · WebRTC</span>
+          </div>
         </div>
       </footer>
 

@@ -212,8 +212,21 @@ export default function SalaAtiva({ sala, role }) {
     }
   };
 
+  // ==========================================
+  // ATUALIZADO: Gatilho de auditoria do Botão Vermelho
+  // ==========================================
   const encerrarChamadaManualmente = () => {
+    // 1. Grava no log forense que ele saiu por vontade própria
+    if (socketRef.current) {
+      socketRef.current.emit('registrar-acao-midia', {
+        evento: 'ENCERROU_CHAMADA_VOLUNTARIAMENTE'
+      });
+    }
+    
+    // 2. Mata câmera, microfone e P2P
     encerrarChamadaBrutalmente();
+    
+    // 3. Joga o usuário pra tela de SalaEncerrada
     setTempoEsgotado(true);
   };
 
