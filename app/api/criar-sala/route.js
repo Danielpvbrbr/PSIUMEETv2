@@ -3,57 +3,68 @@ import crypto from 'crypto';
 import { db } from '../../db';
 import { salas } from '../../db/schema';
 
-// Função auxiliar para processar e criar a sala no banco
 async function processarCriacaoSala(dados, reqHost, reqProto) {
-  let { nomeSala, idAgendamentoExterno, horarioInicio, horarioFim, minutos } = dados;
+  let { 
+    roomName, 
+    externalId, 
+    startTime, 
+    endTime, 
+    duration,
+    showEndButton, 
+    endWarningText,
+    hostName, 
+    hostAvatar, 
+    guestName, 
+    guestAvatar 
+  } = dados;
 
   const agora = new Date();
+  const dataInicio = startTime ? new Date(startTime) : agora;
   
-  // Se não passar inicio, assume AGORA
-  const dataInicio = horarioInicio ? new Date(horarioInicio) : agora;
-
-  // Se não passar fim, calcula com base na duração informada (padrão: 60 minutos)
   let dataFim;
-  if (horarioFim) {
-    dataFim = new Date(horarioFim);
+  if (endTime) {
+    dataFim = new Date(endTime);
   } else {
-    const duracaoMinutos = minutos ? parseInt(minutos, 10) : 60;
+    const duracaoMinutos = duration ? parseInt(duration, 10) : 60;
     dataFim = new Date(dataInicio.getTime() + duracaoMinutos * 60000);
   }
 
+  const finalMostrarBotao = (showEndButton === false || showEndButton === 'false') ? false : true; 
+  const finalTextoAviso = endWarningText || "Tem certeza que deseja encerrar esta sessão? Esta ação não poderá ser desfeita.";
   const roomId = crypto.randomUUID();
 
-  // Salva no SQLite via Drizzle
+  // Insert com as novas colunas
   await db.insert(salas).values({
     id: roomId,
-    nome: nomeSala || 'Aula Agendada',
-    idAgendamentoExterno: idAgendamentoExterno || null,
-    inicio: dataInicio,
-    fim: dataFim,
+    roomName: roomName || 'Scheduled Room',
+    externalId: externalId || null,
+    startTime: dataInicio,
+    endTime: dataFim,
+    showEndButton: finalMostrarBotao,     
+    endWarningText: finalTextoAviso,
+    hostName: hostName || 'Host',        
+    hostAvatar: hostAvatar || null,               
+    guestName: guestName || 'Guest',   
+    guestAvatar: guestAvatar || null              
   });
 
-  // Detecta dinamicamente a URL (Ngrok, Localhost ou Produção)
   const baseUrl = `${reqProto}://${reqHost}`;
 
+  // Retorno da API 100% em inglês (Padrão Internacional)
   return {
-    sucesso: true,
+    success: true,
     roomId: roomId,
-    nomeSala: nomeSala || 'Aula Agendada',
-    // Retorna os links formatados com type=1 (Prof) e type=2 (Aluno)
-    linkProfessor: `${baseUrl}/reuniao/${roomId}?type=1`,
-    linkAluno: `${baseUrl}/reuniao/${roomId}?type=2`,
-    // Mantém compatibilidade caso queira usar role=prof ou role=aluno
-    linkProfessorRole: `${baseUrl}/reuniao/${roomId}?role=prof`,
-    linkAlunoRole: `${baseUrl}/reuniao/${roomId}?role=aluno`,
-    horarios: {
-      inicio: dataInicio.toISOString(),
-      fim: dataFim.toISOString(),
-      duracaoMinutos: Math.round((dataFim - dataInicio) / 60000)
+    roomName: roomName || 'Scheduled Room',
+    hostLink: `${baseUrl}/reuniao/${roomId}?type=1`,
+    guestLink: `${baseUrl}/reuniao/${roomId}?type=2`,
+    schedule: {
+      startTime: dataInicio.toISOString(),
+      endTime: dataFim.toISOString(),
+      durationMinutes: Math.round((dataFim - dataInicio) / 60000)
     }
   };
 }
 
-// 1. Método POST (Recebe JSON no Body)
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -65,21 +76,23 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Erro ao criar sala via POST:', error);
-    return NextResponse.json({ erro: 'Falha interna ao criar sala' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
-// 2. Método GET (Prático para Postman, Swagger e Navegador)
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     
+    // Mapeando a query string em inglês
     const dados = {
-      nomeSala: searchParams.get('nomeSala'),
-      idAgendamentoExterno: searchParams.get('idAgendamentoExterno'),
-      horarioInicio: searchParams.get('horarioInicio'),
-      horarioFim: searchParams.get('horarioFim'),
-      minutos: searchParams.get('minutos')
+      roomName: searchParams.get('roomName'),
+      externalId: searchParams.get('externalId'),
+      startTime: searchParams.get('startTime'),
+      endTime: searchParams.get('endTime'),
+      duration: searchParams.get('duration'),
+      showEndButton: searchParams.get('showEndButton'), 
+      endWarningText: searchParams.get('endWarningText') 
     };
 
     const host = request.headers.get('host');
@@ -90,6 +103,6 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('Erro ao criar sala via GET:', error);
-    return NextResponse.json({ erro: 'Falha interna ao criar sala' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

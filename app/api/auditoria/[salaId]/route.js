@@ -1,4 +1,3 @@
-// app/api/auditoria/[salaId]/route.js
 import { NextResponse } from 'next/server';
 import { db } from '../../../db';
 import { salas, logsAuditoria } from '../../../db/schema';
@@ -12,7 +11,7 @@ export async function GET(request, { params }) {
     const [sala] = await db.select().from(salas).where(eq(salas.id, salaId));
 
     if (!sala) {
-      return NextResponse.json({ erro: 'Sala não encontrada' }, { status: 404 });
+      return NextResponse.json({ error: 'Room not found' }, { status: 404 });
     }
 
     // 2. Busca todo o histórico de eventos da sala ordenado pelo horário
@@ -22,41 +21,53 @@ export async function GET(request, { params }) {
       .where(eq(logsAuditoria.salaId, salaId))
       .orderBy(asc(logsAuditoria.criadoEm));
 
-    // 3. Separa os logs por participante
-    const logsProf = logs.filter(l => l.role === 'prof');
-    const logsAluno = logs.filter(l => l.role === 'aluno');
+    // 3. Separa os logs por participante 
+    // (Checamos prof/aluno também para garantir compatibilidade com testes antigos)
+    const logsHost = logs.filter(l => l.role === 'host' || l.role === 'prof' || l.role === '1');
+    const logsGuest = logs.filter(l => l.role === 'guest' || l.role === 'aluno' || l.role === '2');
 
     // 4. Retorna a síntese pericial dos acessos e a linha do tempo completa
+    // Tudo no novo padrão Flat e em Inglês!
     return NextResponse.json({
-      salaId: sala.id,
-      idAgendamentoExterno: sala.idAgendamentoExterno,
-      horariosAgendados: {
-        inicio: sala.inicio,
-        fim: sala.fim
+      roomId: sala.id,
+      roomName: sala.roomName,
+      externalId: sala.externalId,
+      schedule: {
+        startTime: sala.startTime,
+        endTime: sala.endTime
       },
-      metricas: {
-        professor: {
-          presente: logsProf.length > 0,
-          primeiroAcesso: logsProf[0]?.criadoEm || null,
-          ultimoAcesso: logsProf[logsProf.length - 1]?.criadoEm || null,
-          totalEventos: logsProf.length
+      metrics: {
+        host: {
+          name: sala.hostName,
+          present: logsHost.length > 0,
+          firstAccess: logsHost[0]?.criadoEm || null,
+          lastAccess: logsHost[logsHost.length - 1]?.criadoEm || null,
+          totalEvents: logsHost.length
         },
-        aluno: {
-          presente: logsAluno.length > 0,
-          primeiroAcesso: logsAluno[0]?.criadoEm || null,
-          ultimoAcesso: logsAluno[logsAluno.length - 1]?.criadoEm || null,
-          totalEventos: logsAluno.length
+        guest: {
+          name: sala.guestName,
+          present: logsGuest.length > 0,
+          firstAccess: logsGuest[0]?.criadoEm || null,
+          lastAccess: logsGuest[logsGuest.length - 1]?.criadoEm || null,
+          totalEvents: logsGuest.length
         }
       },
-      linhaDoTempo: logs.map(l => ({
-        horario: l.criadoEm,
-        role: l.role,
-        evento: l.evento
-      }))
+      timeline: logs.map(l => {
+        // Padroniza a string de saída para host/guest
+        let finalRole = l.role;
+        if (l.role === 'prof' || l.role === '1') finalRole = 'host';
+        if (l.role === 'aluno' || l.role === '2') finalRole = 'guest';
+
+        return {
+          timestamp: l.criadoEm,
+          role: finalRole,
+          event: l.evento
+        };
+      })
     });
 
   } catch (error) {
     console.error('Erro ao consultar auditoria:', error);
-    return NextResponse.json({ erro: 'Falha ao processar auditoria' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

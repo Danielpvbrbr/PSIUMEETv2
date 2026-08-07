@@ -103,9 +103,8 @@ function PainelSessao() {
           {NOMES_DEMO.map((iniciais, i) => (
             <div
               key={iniciais}
-              className={`w-7 h-7 rounded-full border-2 border-[#12151b] bg-[#1e2530] flex items-center justify-center text-[9px] text-[#c8cdd6] transition-opacity duration-500 ${
-                i < conectados ? "opacity-100" : "opacity-0"
-              }`}
+              className={`w-7 h-7 rounded-full border-2 border-[#12151b] bg-[#1e2530] flex items-center justify-center text-[9px] text-[#c8cdd6] transition-opacity duration-500 ${i < conectados ? "opacity-100" : "opacity-0"
+                }`}
               style={monoFont}
             >
               {iniciais}
@@ -258,21 +257,19 @@ function TelaChamada() {
       <div className="flex items-center justify-center gap-2.5 px-5 py-4 border-t border-[#232932] bg-[#151920]">
         <button
           onClick={() => setMicLigado((v) => !v)}
-          className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors ${
-            micLigado
+          className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors ${micLigado
               ? "border-[#2e3540] text-[#c8cdd6] hover:border-[#565d6b]"
               : "bg-[#3a1f1c] border-[#5c2b26] text-[#ff8a80]"
-          }`}
+            }`}
         >
           <IconeMic ligado={micLigado} />
         </button>
         <button
           onClick={() => setCameraLigada((v) => !v)}
-          className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors ${
-            cameraLigada
+          className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors ${cameraLigada
               ? "border-[#2e3540] text-[#c8cdd6] hover:border-[#565d6b]"
               : "bg-[#3a1f1c] border-[#5c2b26] text-[#ff8a80]"
-          }`}
+            }`}
         >
           <IconeCamera ligada={cameraLigada} />
         </button>
@@ -380,12 +377,12 @@ export default function Home() {
   const [carregando, setCarregando] = useState(false);
   const [dadosSala, setDadosSala] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
-  const [tempoRequest, setTempoRequest] = useState(0); 
+  const [tempoRequest, setTempoRequest] = useState(0);
 
   const criarSalaDemo = async () => {
     setCarregando(true);
     setDadosSala(null);
-    const inicioRequisicao = performance.now(); 
+    const inicioRequisicao = performance.now();
 
     try {
       const agora = new Date();
@@ -403,11 +400,13 @@ export default function Home() {
           idAgendamentoExterno: "DEV-ENV-9081",
           horarioInicio: inicio.toISOString(),
           horarioFim: fim.toISOString(),
+          mostrarBotaoEncerrar: true, // Tente colocar false pra ver o botão sumir na sala!
+          textoAvisoEncerramento: "Deseja finalizar sua aula de Matemática agora?"
         }),
       });
 
       const data = await res.json();
-      const fimRequisicao = performance.now(); 
+      const fimRequisicao = performance.now();
       setTempoRequest(Math.round(fimRequisicao - inicioRequisicao));
 
       if (data.sucesso) {

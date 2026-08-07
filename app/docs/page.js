@@ -50,42 +50,75 @@ Além da criação de salas, a API expõe endpoints de **telemetria e auditoria*
           tags: ["Salas"],
           summary: "Criar sala 1x1",
           description:
-            "Cria uma nova sessão peer-to-peer. Retorna `roomId` e links de acesso para host e participante. Ideal para ser chamado pelo seu backend.",
+            "Cria uma nova sessão peer-to-peer usando payload plano (Flat Payload). Retorna `roomId` e links de acesso para Host e Guest.",
           requestBody: {
             required: true,
             content: {
               "application/json": {
                 schema: {
                   type: "object",
-                  required: ["nomeSala"],
+                  required: ["roomName"], // <--- Atualizado para inglês
                   properties: {
-                    nomeSala: {
+                    roomName: {
                       type: "string",
-                      example: "Atendimento - Maria Silva",
+                      example: "Technical Interview - Maria",
                       description: "Nome amigável da sessão",
                     },
-                    idAgendamentoExterno: {
+                    externalId: {
                       type: "string",
-                      example: "AGD-2026-9912",
+                      example: "INT-2026-9912",
                       description: "ID do seu sistema (opcional)",
                     },
-                    horarioInicio: {
+                    startTime: {
                       type: "string",
                       format: "date-time",
                       example: new Date(Date.now() + 60000).toISOString(),
                       description: "Início programado (ISO 8601)",
                     },
-                    horarioFim: {
+                    endTime: {
                       type: "string",
                       format: "date-time",
                       example: new Date(Date.now() + 3660000).toISOString(),
                       description: "Fim programado (ISO 8601)",
                     },
-                    minutos: {
+                    duration: {
                       type: "number",
                       example: 60,
-                      description: "Duração em minutos (usado se horarioFim não for enviado)",
+                      description: "Duração em minutos (usado se endTime não for enviado)",
                     },
+                    showEndButton: {
+                      type: "boolean",
+                      example: true,
+                      description: "Define se o botão de encerrar sessão será exibido na interface. (Padrão: true)"
+                    },
+                    endWarningText: {
+                      type: "string",
+                      example: "Are you sure you want to end this session?",
+                      description: "Texto personalizado exibido no modal de encerramento."
+                    },
+                    // =====================================
+                    // NOVOS CAMPOS: HOST E GUEST
+                    // =====================================
+                    hostName: {
+                      type: "string",
+                      example: "Tech Lead John",
+                      description: "Nome do anfitrião (Host) para exibição na sala",
+                    },
+                    hostAvatar: {
+                      type: "string",
+                      example: "https://exemplo.com/john.jpg",
+                      description: "URL da foto do anfitrião (Host)",
+                    },
+                    guestName: {
+                      type: "string",
+                      example: "Candidate Maria",
+                      description: "Nome do convidado (Guest) para exibição na sala",
+                    },
+                    guestAvatar: {
+                      type: "string",
+                      example: "https://exemplo.com/maria.jpg",
+                      description: "URL da foto do convidado (Guest)",
+                    }
                   },
                 },
               },
@@ -99,21 +132,23 @@ Além da criação de salas, a API expõe endpoints de **telemetria e auditoria*
                   schema: {
                     type: "object",
                     properties: {
-                      sucesso: { type: "boolean", example: true },
+                      success: { type: "boolean", example: true }, // <--- Atualizado
                       roomId: { type: "string", example: "a3b8c19d-4e2f-4a1b-9c3d-7e8f9a0b1c2d" },
-                      linkProfessor: {
+                      roomName: { type: "string", example: "Technical Interview - Maria" },
+                      hostLink: { // <--- Atualizado
                         type: "string",
                         example: "https://app.psiumeeet.com/sala/a3b8c19d?type=1",
                       },
-                      linkAluno: {
+                      guestLink: { // <--- Atualizado
                         type: "string",
                         example: "https://app.psiumeeet.com/sala/a3b8c19d?type=2",
                       },
-                      horarios: {
+                      schedule: { // <--- Atualizado
                         type: "object",
                         properties: {
-                          inicio: { type: "string", format: "date-time" },
-                          fim: { type: "string", format: "date-time" },
+                          startTime: { type: "string", format: "date-time" },
+                          endTime: { type: "string", format: "date-time" },
+                          durationMinutes: { type: "number", example: 60 }
                         },
                       },
                     },
@@ -127,24 +162,15 @@ Além da criação de salas, a API expõe endpoints de **telemetria e auditoria*
         get: {
           tags: ["Salas"],
           summary: "Criar sala rápida (query params)",
-          description:
-            "Atalho para testes. Cria uma sala imediatamente usando parâmetros na URL.",
+          description: "Atalho para testes. Cria uma sala imediatamente usando parâmetros na URL.",
           parameters: [
-            {
-              name: "nomeSala",
-              in: "query",
-              schema: { type: "string", example: "Teste rápido" },
-            },
-            {
-              name: "minutos",
-              in: "query",
-              schema: { type: "number", example: 30 },
-            },
-            {
-              name: "idAgendamentoExterno",
-              in: "query",
-              schema: { type: "string", example: "TESTE_GET_1" },
-            },
+            { name: "roomName", in: "query", schema: { type: "string", example: "Quick Test" } },
+            { name: "duration", in: "query", schema: { type: "number", example: 30 } },
+            { name: "externalId", in: "query", schema: { type: "string", example: "TEST_1" } },
+            { name: "showEndButton", in: "query", schema: { type: "boolean", example: true } },
+            { name: "endWarningText", in: "query", schema: { type: "string", example: "End session?" } },
+            { name: "hostName", in: "query", schema: { type: "string", example: "Host" } },
+            { name: "guestName", in: "query", schema: { type: "string", example: "Guest" } }
           ],
           responses: {
             "200": { description: "Sala criada com sucesso" },
@@ -191,6 +217,7 @@ Além da criação de salas, a API expõe endpoints de **telemetria e auditoria*
                                 "ABA_MINIMIZADA",
                                 "CONEXAO_PERDIDA",
                                 "BITRATE_AJUSTADO",
+                                "ENCERROU_CHAMADA_VOLUNTARIAMENTE"
                               ],
                             },
                             participante: { type: "string" },

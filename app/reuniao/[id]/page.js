@@ -9,34 +9,35 @@ export default async function PageReuniao({ params, searchParams }) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   
-  // Trata 'type=1' (ou 'role=prof') como 'prof', e 'type=2' (ou 'role=aluno') como 'aluno'
+  // Agora traduzimos internamente para 'host' e 'guest' (mantendo compatibilidade com type=1 e type=2)
   const typeParam = resolvedSearchParams.type;
   const roleParam = resolvedSearchParams.role;
 
-  let role = 'aluno'; // Padrão
-  if (typeParam === '1' || roleParam === 'prof') {
-    role = 'prof';
-  } else if (typeParam === '2' || roleParam === 'aluno') {
-    role = 'aluno';
+  let role = 'guest'; // Convidado é o padrão (segurança)
+  if (typeParam === '1' || roleParam === 'prof' || roleParam === 'host') {
+    role = 'host';
+  } else if (typeParam === '2' || roleParam === 'aluno' || roleParam === 'guest') {
+    role = 'guest';
   }
 
   const [sala] = await db.select().from(salas).where(eq(salas.id, id));
 
   if (!sala) {
     return (
-      <div className="bg-gray-900 h-screen flex items-center justify-center text-white text-xl">
-        Sala não encontrada.
+      <div className="bg-[#0a0c10] h-screen flex items-center justify-center text-[#9aa2b1] text-lg font-sans">
+        Sala não encontrada ou link inválido.
       </div>
     );
   }
 
   const agora = new Date();
 
-  if (agora >= sala.fim) {
+  // ATUALIZADO: Usando os novos nomes do banco em inglês (endTime e startTime)
+  if (agora >= sala.endTime) {
     return <SalaEncerrada sala={sala} role={role} />;
   }
 
-  if (agora < sala.inicio) {
+  if (agora < sala.startTime) {
     return <SalaDeEspera sala={sala} role={role} />;
   }
 

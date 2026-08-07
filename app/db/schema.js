@@ -2,16 +2,24 @@ import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 export const salas = sqliteTable('salas', {
   id: text('id').primaryKey(),
-  nome: text('nome').notNull(),
-  idAgendamentoExterno: text('id_agendamento_externo'),
-  inicio: integer('inicio', { mode: 'timestamp' }).notNull(),
-  fim: integer('fim', { mode: 'timestamp' }).notNull(),
+  roomName: text('room_name').notNull(),
+  externalId: text('external_id'),
+  startTime: integer('start_time', { mode: 'timestamp' }).notNull(),
+  endTime: integer('end_time', { mode: 'timestamp' }).notNull(),
+  showEndButton: integer('show_end_button', { mode: 'boolean' }).default(true),
+  endWarningText: text('end_warning_text'),
+  
+  // Nomes e Avatares
+  hostName: text('host_name'),
+  hostAvatar: text('host_avatar'),
+  guestName: text('guest_name'),
+  guestAvatar: text('guest_avatar')
 });
 
 export const logsAuditoria = sqliteTable('logs_auditoria', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   salaId: text('sala_id').notNull(),
-  role: text('role').notNull(), // 'prof' ou 'aluno'
+  role: text('role').notNull(),
   evento: text('evento').notNull(),
   criadoEm: integer('criado_em', { mode: 'timestamp' }).notNull(),
 });
