@@ -13,7 +13,7 @@ export default function SalaAtiva({ sala, role }) {
   const [modalEncerramentoAberto, setModalEncerramentoAberto] = useState(false);
 
   // Lógica de identificação
-  const ehHost = role === 'prof' || role === 'host' || role === '1'; 
+  const ehHost = role === 'prof' || role === 'host' || role === '1';
   const meuNome = ehHost ? sala.hostName : sala.guestName;
   const minhaFoto = ehHost ? sala.hostAvatar : sala.guestAvatar;
   const outroNome = ehHost ? sala.guestName : sala.hostName;
@@ -25,7 +25,7 @@ export default function SalaAtiva({ sala, role }) {
   const socketRef = useRef();
   const peerRef = useRef();
   const localStreamRef = useRef();
-  
+
   // ==========================================
   // NOVOS REFS: PARA A ANIMAÇÃO DO ÁUDIO (AURA)
   // ==========================================
@@ -40,42 +40,42 @@ export default function SalaAtiva({ sala, role }) {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
-      
+
       // Pega só a faixa de áudio
       const audioTrack = stream.getAudioTracks()[0];
       if (!audioTrack) return;
-      
+
       const source = audioCtx.createMediaStreamSource(new MediaStream([audioTrack]));
       source.connect(analyser);
-      
+
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      
+
       const atualizarAurea = () => {
         if (!avatarGlowRef.current) {
           requestAnimationRef.current = requestAnimationFrame(atualizarAurea);
           return;
         }
-        
+
         analyser.getByteFrequencyData(dataArray);
-        
+
         // Calcula a média do volume (0 a 255)
         let soma = 0;
         for (let i = 0; i < dataArray.length; i++) {
           soma += dataArray[i];
         }
         const media = soma / dataArray.length;
-        
+
         // Mapeia o volume para o tamanho da sombra (glow)
         // Se a média for baixa, a sombra fica 0. Se for alta, cresce até ~30px.
         const tamanhoGlow = Math.min(media * 0.4, 30);
-        
+
         // Aplica direto no CSS do elemento (Não causa re-render no React = Zero Travamento)
         // Cor do Glow: Um verde suave estilo Google Meet
         avatarGlowRef.current.style.boxShadow = `0 0 0 ${tamanhoGlow}px rgba(74, 222, 128, ${tamanhoGlow > 3 ? 0.3 : 0})`;
-        
+
         requestAnimationRef.current = requestAnimationFrame(atualizarAurea);
       };
-      
+
       atualizarAurea();
     } catch (err) {
       console.error("Erro ao iniciar analisador de áudio:", err);
@@ -126,13 +126,13 @@ export default function SalaAtiva({ sala, role }) {
         try {
           // Cria a conexão para quem está recebendo a chamada
           peerRef.current = createPeerConnection(stream, false);
-          
+
           await peerRef.current.setRemoteDescription(new RTCSessionDescription(offer));
           const answer = await peerRef.current.createAnswer();
-          
+
           // O WebRTC moderno prefere setLocalDescription sem parâmetros para evitar o erro de SDP
-          await peerRef.current.setLocalDescription(); 
-          
+          await peerRef.current.setLocalDescription();
+
           socketRef.current.emit('answer', sala.id, peerRef.current.localDescription);
         } catch (err) {
           console.warn("Oferta ignorada (Comportamento normal no ambiente de Dev do React)");
@@ -153,7 +153,7 @@ export default function SalaAtiva({ sala, role }) {
       socketRef.current.on('ice-candidate', (candidate) => {
         if (peerRef.current) peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
       });
-    }); 
+    });
 
     const handleBeforeUnload = () => { if (socketRef.current) socketRef.current.emit('registrar-motivo-saida', { motivo: 'FECHOU_ABA_OU_NAVEGADOR' }); };
     const handleVisibilityChange = () => { if (socketRef.current) socketRef.current.emit('mudanca-status-app', { evento: document.hidden ? 'APP_EM_BACKGROUND' : 'APP_EM_FOCO' }); };
@@ -180,7 +180,7 @@ export default function SalaAtiva({ sala, role }) {
         const parameters = sender.getParameters();
         if (!parameters.encodings) parameters.encodings = [{}];
         parameters.encodings[0].maxBitrate = 2500 * 1000;
-        sender.setParameters(parameters).catch(() => {});
+        sender.setParameters(parameters).catch(() => { });
       }
     });
 
@@ -194,7 +194,15 @@ export default function SalaAtiva({ sala, role }) {
     };
 
     if (isInitiator) {
-      peer.createOffer().then(offer => { peer.setLocalDescription(offer); socketRef.current.emit('offer', sala.id, offer); });
+      peer.createOffer().then(async (offer) => {
+        try {
+          // Seta a descrição local dinamicamente
+          await peer.setLocalDescription();
+          socketRef.current.emit('offer', sala.id, peer.localDescription);
+        } catch (err) {
+          console.warn("Gatilho de oferta duplo evitado.");
+        }
+      });
     }
     return peer;
   };
@@ -281,14 +289,14 @@ export default function SalaAtiva({ sala, role }) {
 
       {/* PiP — você */}
       <div className={`absolute bottom-24 right-6 z-20 aspect-[3/4] w-32 overflow-hidden rounded-xl border shadow-2xl transition-colors duration-300 md:w-48 ${videoAtivo ? 'border-[#2e3540]' : 'border-[#232932]'} bg-[#0a0c10]`}>
-        
+
         {/* ========================================== */}
         {/* NOVA TELA DE CÂMERA DESATIVADA COM AVATAR E AURA */}
         {/* ========================================== */}
         {!videoAtivo && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#0a0c10]/95 backdrop-blur-md">
-            
-            <div 
+
+            <div
               ref={avatarGlowRef}
               className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1c2129] border-2 border-[#2e3540] transition-shadow duration-75 ease-linear"
             >
@@ -305,7 +313,7 @@ export default function SalaAtiva({ sala, role }) {
         )}
 
         <video ref={myVideo} autoPlay playsInline muted className={`h-full w-full object-cover scale-x-[-1] ${!videoAtivo && 'opacity-0'}`} />
-        
+
         <div className="absolute bottom-1.5 left-1.5 z-30 flex items-center gap-1.5 rounded bg-[#0a0c10]/70 px-1.5 py-0.5 backdrop-blur-sm">
           <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
             <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" stroke={audioAtivo ? '#c8cdd6' : '#ff8a80'} strokeWidth="1.3" />
