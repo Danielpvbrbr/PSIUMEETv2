@@ -8,12 +8,11 @@ export const salas = sqliteTable('salas', {
   endTime: integer('end_time', { mode: 'timestamp' }).notNull(),
   showEndButton: integer('show_end_button', { mode: 'boolean' }).default(true),
   endWarningText: text('end_warning_text'),
-  
-  // Nomes e Avatares
   hostName: text('host_name'),
   hostAvatar: text('host_avatar'),
   guestName: text('guest_name'),
-  guestAvatar: text('guest_avatar')
+  guestAvatar: text('guest_avatar'),
+  endRedirect: text('end_redirect')
 });
 
 export const logsAuditoria = sqliteTable('logs_auditoria', {

@@ -4,23 +4,24 @@ import { db } from '../../db';
 import { salas } from '../../db/schema';
 
 async function processarCriacaoSala(dados, reqHost, reqProto) {
-  let { 
-    roomName, 
-    externalId, 
-    startTime, 
-    endTime, 
+  let {
+    roomName,
+    externalId,
+    startTime,
+    endTime,
     duration,
-    showEndButton, 
+    showEndButton,
     endWarningText,
-    hostName, 
-    hostAvatar, 
-    guestName, 
-    guestAvatar 
+    hostName,
+    hostAvatar,
+    guestName,
+    guestAvatar,
+    endRedirect
   } = dados;
 
   const agora = new Date();
   const dataInicio = startTime ? new Date(startTime) : agora;
-  
+
   let dataFim;
   if (endTime) {
     dataFim = new Date(endTime);
@@ -29,7 +30,7 @@ async function processarCriacaoSala(dados, reqHost, reqProto) {
     dataFim = new Date(dataInicio.getTime() + duracaoMinutos * 60000);
   }
 
-  const finalMostrarBotao = (showEndButton === false || showEndButton === 'false') ? false : true; 
+  const finalMostrarBotao = (showEndButton === false || showEndButton === 'false') ? false : true;
   const finalTextoAviso = endWarningText || "Tem certeza que deseja encerrar esta sessão? Esta ação não poderá ser desfeita.";
   const roomId = crypto.randomUUID();
 
@@ -40,12 +41,13 @@ async function processarCriacaoSala(dados, reqHost, reqProto) {
     externalId: externalId || null,
     startTime: dataInicio,
     endTime: dataFim,
-    showEndButton: finalMostrarBotao,     
+    showEndButton: finalMostrarBotao,
     endWarningText: finalTextoAviso,
-    hostName: hostName || 'Host',        
-    hostAvatar: hostAvatar || null,               
-    guestName: guestName || 'Guest',   
-    guestAvatar: guestAvatar || null              
+    hostName: hostName || 'Host',
+    hostAvatar: hostAvatar || null,
+    guestName: guestName || 'Guest',
+    guestAvatar: guestAvatar || null,
+    endRedirect: endRedirect || null
   });
 
   const baseUrl = `${reqProto}://${reqHost}`;
@@ -69,7 +71,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const host = request.headers.get('host');
-    const proto = request.headers.get('x-forwarded-proto') || 'http';
+    const proto = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
 
     const resultado = await processarCriacaoSala(body, host, proto);
     return NextResponse.json(resultado);
@@ -83,7 +85,7 @@ export async function POST(request) {
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    
+
     // Mapeando a query string em inglês
     const dados = {
       roomName: searchParams.get('roomName'),
@@ -91,8 +93,8 @@ export async function GET(request) {
       startTime: searchParams.get('startTime'),
       endTime: searchParams.get('endTime'),
       duration: searchParams.get('duration'),
-      showEndButton: searchParams.get('showEndButton'), 
-      endWarningText: searchParams.get('endWarningText') 
+      showEndButton: searchParams.get('showEndButton'),
+      endWarningText: searchParams.get('endWarningText')
     };
 
     const host = request.headers.get('host');

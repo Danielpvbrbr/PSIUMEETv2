@@ -409,7 +409,7 @@ export default function Home() {
       const fimRequisicao = performance.now();
       setTempoRequest(Math.round(fimRequisicao - inicioRequisicao));
 
-      if (data.sucesso) {
+      if (data.success) {
         setDadosSala(data);
       } else {
         alert("Erro na API: " + JSON.stringify(data));
@@ -737,7 +737,7 @@ export default function Home() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <a
-                        href={dadosSala.linkProfessor}
+                        href={dadosSala.hostLink}
                         target="_blank"
                         className="group flex flex-col gap-1 bg-[#1a1e26] hover:bg-[#20242d] border border-[#2e3540] hover:border-[#565d6b] rounded p-4 transition-all"
                       >
@@ -750,7 +750,7 @@ export default function Home() {
                         <span className="text-[11px] text-[#7d8697]" style={monoFont}>Abrir cliente (Professor)</span>
                       </a>
                       <a
-                        href={dadosSala.linkAluno}
+                        href={dadosSala.guestLink}
                         target="_blank"
                         className="group flex flex-col gap-1 bg-[#1a1e26] hover:bg-[#20242d] border border-[#2e3540] hover:border-[#565d6b] rounded p-4 transition-all"
                       >

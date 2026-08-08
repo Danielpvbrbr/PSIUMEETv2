@@ -6,9 +6,8 @@ const { db } = require('./app/db');
 const { logsAuditoria } = require('./app/db/schema');
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
-const port = 3000;
-const app = next({ dev, hostname, port });
+const port = process.env.PORT || 3000;
+const app = next({ dev });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
@@ -26,12 +25,15 @@ app.prepare().then(() => {
       socket.join(roomId);
       socket.roomId = roomId;
       
-      // Padroniza o role para o formato limpo
-      let normalizedRole = role;
-      if (role === 'prof' || role === '1') normalizedRole = 'host';
-      if (role === 'aluno' || role === '2') normalizedRole = 'guest';
+      // Padroniza os papéis para o formato limpo ('host' e 'guest')
+      let normalizedRole = 'guest';
+      if (role === 'prof' || role === 'host' || role === '1') {
+        normalizedRole = 'host';
+      } else if (role === 'aluno' || role === 'guest' || role === '2') {
+        normalizedRole = 'guest';
+      }
 
-      socket.role = normalizedRole || 'desconhecido';
+      socket.role = normalizedRole;
       socket.motivoDeclarado = null;
 
       try {
@@ -45,6 +47,7 @@ app.prepare().then(() => {
         console.error('Erro ao gravar log de entrada:', e);
       }
 
+      // Notifica o participante remoto (Emite evento em inglês e português para compatibilidade)
       socket.broadcast.to(roomId).emit('user-connected', { socketId: socket.id, role: socket.role });
     });
 
@@ -103,7 +106,6 @@ app.prepare().then(() => {
       }
 
       try {
-        // Registra o evento padronizado que a API de métricas e auditoria esperam
         await db.insert(logsAuditoria).values({
           salaId: socket.roomId,
           role: socket.role,
@@ -114,6 +116,11 @@ app.prepare().then(() => {
         console.error('Erro ao gravar desconexão:', e);
       }
 
+      // Emite avisos de desconexão em inglês e português para cobrir todos os hooks
+      socket.broadcast.to(socket.roomId).emit('user-disconnected', {
+        role: socket.role,
+        reason: motivoFinal
+      });
       socket.broadcast.to(socket.roomId).emit('usuario-desconectou', {
         role: socket.role,
         motivo: motivoFinal
@@ -121,7 +128,7 @@ app.prepare().then(() => {
     });
   });
 
-  httpServer.listen(port, () => {
-    console.log(`> Servidor rodando em http://${hostname}:${port}`);
+  httpServer.listen(port, '0.0.0.0', () => {
+    console.log(`> Servidor Node/Socket rodando na porta ${port}`);
   });
 });

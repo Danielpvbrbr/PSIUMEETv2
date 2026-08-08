@@ -12,7 +12,6 @@ export default function SalaAtiva({ sala, role }) {
   const [videoAtivo, setVideoAtivo] = useState(true);
   const [modalEncerramentoAberto, setModalEncerramentoAberto] = useState(false);
 
-  // Lógica de identificação
   const ehHost = role === 'prof' || role === 'host' || role === '1';
   const meuNome = ehHost ? sala.hostName : sala.guestName;
   const minhaFoto = ehHost ? sala.hostAvatar : sala.guestAvatar;
@@ -26,22 +25,21 @@ export default function SalaAtiva({ sala, role }) {
   const peerRef = useRef();
   const localStreamRef = useRef();
 
-  // ==========================================
-  // NOVOS REFS: PARA A ANIMAÇÃO DO ÁUDIO (AURA)
-  // ==========================================
+  // 🛡️ REFS NOVOS PARA BLINDAGEM DE VÍDEO
+  const remoteStreamRef = useRef(null);
+  const pendingCandidates = useRef([]); // Fila de espera da rede
+
   const avatarGlowRef = useRef(null);
   const requestAnimationRef = useRef(null);
 
   const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
 
-  // Função mágica que lê o microfone e pulsa a aura
   const configurarAnalisadorDeAudio = (stream) => {
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
 
-      // Pega só a faixa de áudio
       const audioTrack = stream.getAudioTracks()[0];
       if (!audioTrack) return;
 
@@ -58,19 +56,13 @@ export default function SalaAtiva({ sala, role }) {
 
         analyser.getByteFrequencyData(dataArray);
 
-        // Calcula a média do volume (0 a 255)
         let soma = 0;
         for (let i = 0; i < dataArray.length; i++) {
           soma += dataArray[i];
         }
         const media = soma / dataArray.length;
 
-        // Mapeia o volume para o tamanho da sombra (glow)
-        // Se a média for baixa, a sombra fica 0. Se for alta, cresce até ~30px.
         const tamanhoGlow = Math.min(media * 0.4, 30);
-
-        // Aplica direto no CSS do elemento (Não causa re-render no React = Zero Travamento)
-        // Cor do Glow: Um verde suave estilo Google Meet
         avatarGlowRef.current.style.boxShadow = `0 0 0 ${tamanhoGlow}px rgba(74, 222, 128, ${tamanhoGlow > 3 ? 0.3 : 0})`;
 
         requestAnimationRef.current = requestAnimationFrame(atualizarAurea);
@@ -83,6 +75,8 @@ export default function SalaAtiva({ sala, role }) {
   };
 
   useEffect(() => {
+    let isMounted = true; // 🛡️ TRAVA DO REACT STRICT MODE
+
     const calcularTempoRestante = () => {
       const agora = new Date().getTime();
       const fim = new Date(sala.endTime).getTime();
@@ -105,15 +99,28 @@ export default function SalaAtiva({ sala, role }) {
     socketRef.current = io({ transports: ['websocket'] });
 
     const configuracaoMidia = {
-      video: { width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 60 }, facingMode: "user" },
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 }
+      },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
     };
 
     navigator.mediaDevices.getUserMedia(configuracaoMidia).then((stream) => {
+      // 🛡️ Se o React já desmontou a tela no fundo, mata a câmera duplicada na hora!
+      if (!isMounted) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+
       localStreamRef.current = stream;
       if (myVideo.current) myVideo.current.srcObject = stream;
 
-      // CHAMA O ANALISADOR DE ÁUDIO ASSIM QUE PEGAR O MICROFONE
       configurarAnalisadorDeAudio(stream);
 
       socketRef.current.emit('join-room', { roomId: sala.id, role });
@@ -124,35 +131,56 @@ export default function SalaAtiva({ sala, role }) {
 
       socketRef.current.on('offer', async (offer) => {
         try {
-          // Cria a conexão para quem está recebendo a chamada
-          peerRef.current = createPeerConnection(stream, false);
+          if (!peerRef.current) {
+            peerRef.current = createPeerConnection(stream, false);
+          }
+          if (peerRef.current.signalingState !== 'stable') return;
 
           await peerRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+
+          // 🛡️ Drena a fila de rede assim que a porta do vídeo abrir
+          pendingCandidates.current.forEach(c => peerRef.current.addIceCandidate(new RTCIceCandidate(c)));
+          pendingCandidates.current = [];
+
+          if (peerRef.current.signalingState !== 'have-remote-offer') return;
+
           const answer = await peerRef.current.createAnswer();
-
-          // O WebRTC moderno prefere setLocalDescription sem parâmetros para evitar o erro de SDP
-          await peerRef.current.setLocalDescription();
-
+          await peerRef.current.setLocalDescription(answer);
           socketRef.current.emit('answer', sala.id, peerRef.current.localDescription);
         } catch (err) {
-          console.warn("Oferta ignorada (Comportamento normal no ambiente de Dev do React)");
+          console.warn("Oferta ignorada:", err);
         }
       });
 
       socketRef.current.on('answer', async (answer) => {
         try {
-          // Só aplica a resposta se ele realmente estiver esperando uma
-          if (peerRef.current && peerRef.current.signalingState === 'have-local-offer') {
+          if (peerRef.current && peerRef.current.signalingState !== 'stable') {
             await peerRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+
+            // 🛡️ Drena a fila de rede para o Host também
+            pendingCandidates.current.forEach(c => peerRef.current.addIceCandidate(new RTCIceCandidate(c)));
+            pendingCandidates.current = [];
           }
         } catch (err) {
-          console.warn("Resposta ignorada pelo WebRTC");
+          console.warn("Resposta ignorada:", err);
         }
       });
 
-      socketRef.current.on('ice-candidate', (candidate) => {
-        if (peerRef.current) peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+      socketRef.current.on('ice-candidate', async (candidate) => {
+        try {
+          if (peerRef.current && peerRef.current.remoteDescription) {
+            await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          } else {
+            // 🛡️ O vídeo não tá pronto? Coloca o pacote na fila de espera!
+            pendingCandidates.current.push(candidate);
+          }
+        } catch (err) {
+          console.error("Erro no ICE:", err);
+        }
       });
+    }).catch(err => {
+      console.error("Erro ao acessar câmera/microfone:", err);
+      alert("Por favor, permita o acesso à câmera e ao microfone para usar a sala.");
     });
 
     const handleBeforeUnload = () => { if (socketRef.current) socketRef.current.emit('registrar-motivo-saida', { motivo: 'FECHOU_ABA_OU_NAVEGADOR' }); };
@@ -162,6 +190,7 @@ export default function SalaAtiva({ sala, role }) {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      isMounted = false; // 🛡️ SINALIZA PARA PARAR TUDO SE O REACT DESMONTAR
       clearInterval(timerCronometro);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -171,8 +200,18 @@ export default function SalaAtiva({ sala, role }) {
 
   const createPeerConnection = (stream, isInitiator) => {
     const peer = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:stun2.l.google.com:19302' }]
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+      ]
     });
+
+    peer.oniceconnectionstatechange = () => {
+      console.log("⚡ Estado da Conexão ICE:", peer.iceConnectionState);
+      if (peer.iceConnectionState === 'failed' || peer.iceConnectionState === 'disconnected') {
+        console.warn("⚠️ Alerta de Rede: Conexão direta falhou. Considere usar um servidor TURN.");
+      }
+    };
 
     stream.getTracks().forEach(track => {
       const sender = peer.addTrack(track, stream);
@@ -184,31 +223,41 @@ export default function SalaAtiva({ sala, role }) {
       }
     });
 
+    // 🛡️ RECEPÇÃO DE VÍDEO À PROVA DE BALAS
     peer.ontrack = (event) => {
+      console.log("🎥 Vídeo remoto recebido com sucesso!");
+      if (!remoteStreamRef.current) {
+        remoteStreamRef.current = new MediaStream();
+      }
+      remoteStreamRef.current.addTrack(event.track);
+
+      if (userVideo.current) {
+        userVideo.current.srcObject = remoteStreamRef.current;
+      }
       setHasRemoteVideo(true);
-      if (userVideo.current) userVideo.current.srcObject = event.streams[0];
     };
 
     peer.onicecandidate = (event) => {
-      if (event.candidate) socketRef.current.emit('ice-candidate', sala.id, event.candidate);
+      if (event.candidate) {
+        socketRef.current.emit('ice-candidate', sala.id, event.candidate);
+      }
     };
 
     if (isInitiator) {
       peer.createOffer().then(async (offer) => {
         try {
-          // Seta a descrição local dinamicamente
-          await peer.setLocalDescription();
+          await peer.setLocalDescription(offer);
           socketRef.current.emit('offer', sala.id, peer.localDescription);
         } catch (err) {
-          console.warn("Gatilho de oferta duplo evitado.");
+          console.warn("Gatilho de oferta ignorado");
         }
       });
     }
+
     return peer;
   };
 
   const encerrarChamadaBrutalmente = () => {
-    // Para a animação do áudio para não gastar memória
     if (requestAnimationRef.current) cancelAnimationFrame(requestAnimationRef.current);
     if (socketRef.current) socketRef.current.disconnect();
     if (peerRef.current) peerRef.current.close();
@@ -290,12 +339,8 @@ export default function SalaAtiva({ sala, role }) {
       {/* PiP — você */}
       <div className={`absolute bottom-24 right-6 z-20 aspect-[3/4] w-32 overflow-hidden rounded-xl border shadow-2xl transition-colors duration-300 md:w-48 ${videoAtivo ? 'border-[#2e3540]' : 'border-[#232932]'} bg-[#0a0c10]`}>
 
-        {/* ========================================== */}
-        {/* NOVA TELA DE CÂMERA DESATIVADA COM AVATAR E AURA */}
-        {/* ========================================== */}
         {!videoAtivo && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#0a0c10]/95 backdrop-blur-md">
-
             <div
               ref={avatarGlowRef}
               className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1c2129] border-2 border-[#2e3540] transition-shadow duration-75 ease-linear"
@@ -308,7 +353,6 @@ export default function SalaAtiva({ sala, role }) {
                 </span>
               )}
             </div>
-
           </div>
         )}
 

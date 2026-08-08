@@ -9,11 +9,11 @@ export default async function PageReuniao({ params, searchParams }) {
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   
-  // Agora traduzimos internamente para 'host' e 'guest' (mantendo compatibilidade com type=1 e type=2)
+  // Traduz os parâmetros de entrada para os papéis 'host' e 'guest'
   const typeParam = resolvedSearchParams.type;
   const roleParam = resolvedSearchParams.role;
 
-  let role = 'guest'; // Convidado é o padrão (segurança)
+  let role = 'guest'; // Convidado como padrão por segurança
   if (typeParam === '1' || roleParam === 'prof' || roleParam === 'host') {
     role = 'host';
   } else if (typeParam === '2' || roleParam === 'aluno' || roleParam === 'guest') {
@@ -30,16 +30,21 @@ export default async function PageReuniao({ params, searchParams }) {
     );
   }
 
-  const agora = new Date();
+  // Converte todas as datas para timestamp numérico para comparação garantida
+  const agoraMs = new Date().getTime();
+  const inicioMs = new Date(sala.startTime).getTime();
+  const fimMs = new Date(sala.endTime).getTime();
 
-  // ATUALIZADO: Usando os novos nomes do banco em inglês (endTime e startTime)
-  if (agora >= sala.endTime) {
+  // 1. Checa se já passou do horário de término
+  if (agoraMs >= fimMs) {
     return <SalaEncerrada sala={sala} role={role} />;
   }
 
-  if (agora < sala.startTime) {
+  // 2. Checa se ainda não deu o horário de início
+  if (agoraMs < inicioMs) {
     return <SalaDeEspera sala={sala} role={role} />;
   }
 
+  // 3. Sala ativa dentro do horário estipulado
   return <SalaAtiva sala={sala} role={role} />;
 }
