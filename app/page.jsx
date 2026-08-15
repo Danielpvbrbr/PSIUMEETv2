@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Fraunces, JetBrains_Mono, Inter } from "next/font/google";
+import { version } from "../package.json"
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -258,8 +259,8 @@ function TelaChamada() {
         <button
           onClick={() => setMicLigado((v) => !v)}
           className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors ${micLigado
-              ? "border-[#2e3540] text-[#c8cdd6] hover:border-[#565d6b]"
-              : "bg-[#3a1f1c] border-[#5c2b26] text-[#ff8a80]"
+            ? "border-[#2e3540] text-[#c8cdd6] hover:border-[#565d6b]"
+            : "bg-[#3a1f1c] border-[#5c2b26] text-[#ff8a80]"
             }`}
         >
           <IconeMic ligado={micLigado} />
@@ -267,8 +268,8 @@ function TelaChamada() {
         <button
           onClick={() => setCameraLigada((v) => !v)}
           className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors ${cameraLigada
-              ? "border-[#2e3540] text-[#c8cdd6] hover:border-[#565d6b]"
-              : "bg-[#3a1f1c] border-[#5c2b26] text-[#ff8a80]"
+            ? "border-[#2e3540] text-[#c8cdd6] hover:border-[#565d6b]"
+            : "bg-[#3a1f1c] border-[#5c2b26] text-[#ff8a80]"
             }`}
         >
           <IconeCamera ligada={cameraLigada} />
@@ -509,7 +510,7 @@ export default function Home() {
               style={monoFont}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-[#4ade9f]"></span>
-              API ACTIVE
+              v{version}
             </div>
             <Link
               href="/docs"

@@ -12,6 +12,12 @@ export default function SalaAtiva({ sala, role }) {
   const [videoAtivo, setVideoAtivo] = useState(true);
   const [modalEncerramentoAberto, setModalEncerramentoAberto] = useState(false);
 
+  // 🛡️ NOVO: estado de erro de dispositivo, pra mostrar mensagem específica na tela (não só alert)
+  const [erroDispositivo, setErroDispositivo] = useState(null);
+
+  // 🛡️ NOVO: indicador de conexão de rede fraca/instável
+  const [conexaoInstavel, setConexaoInstavel] = useState(false);
+
   const ehHost = role === 'prof' || role === 'host' || role === '1';
   const meuNome = ehHost ? sala.hostName : sala.guestName;
   const minhaFoto = ehHost ? sala.hostAvatar : sala.guestAvatar;
@@ -25,9 +31,12 @@ export default function SalaAtiva({ sala, role }) {
   const peerRef = useRef();
   const localStreamRef = useRef();
 
-  // 🛡️ REFS NOVOS PARA BLINDAGEM DE VÍDEO
+  // 🛡️ REFS DE BLINDAGEM DE VÍDEO
   const remoteStreamRef = useRef(null);
   const pendingCandidates = useRef([]); // Fila de espera da rede
+  const politeRef = useRef(false);
+  const makingOfferRef = useRef(false);
+  const ignoreOfferRef = useRef(false);
 
   const avatarGlowRef = useRef(null);
   const requestAnimationRef = useRef(null);
@@ -74,6 +83,85 @@ export default function SalaAtiva({ sala, role }) {
     }
   };
 
+  // 🛡️ NOVO: captura de mídia em cascata — do mais exigente ao "aceita qualquer coisa"
+  const obterMidiaComFallback = async () => {
+    const tentativas = [
+      {
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      },
+      {
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 24 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      },
+      {
+        video: {
+          width: { ideal: 320 },
+          height: { ideal: 240 }
+        },
+        audio: true
+      },
+      {
+        // Última cartada: sem nenhuma constraint, aceita o que o dispositivo tiver
+        video: true,
+        audio: true
+      }
+    ];
+
+    for (let i = 0; i < tentativas.length; i++) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(tentativas[i]);
+        console.log(`✅ Mídia obtida na tentativa ${i + 1}/${tentativas.length}`, tentativas[i]);
+        return stream;
+      } catch (err) {
+        console.warn(`⚠️ Tentativa ${i + 1} falhou (${err.name}):`, err.message);
+        // Erro de permissão não se resolve tentando de novo com constraints menores
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          throw err;
+        }
+      }
+    }
+
+    const erroFinal = new Error('Nenhum modo de captura funcionou');
+    erroFinal.name = 'NoDeviceAvailable';
+    throw erroFinal;
+  };
+
+  // 🛡️ NOVO: mapeia erro técnico -> mensagem clara pro usuário
+  const mensagemParaErro = (err) => {
+    switch (err.name) {
+      case 'NotAllowedError':
+      case 'PermissionDeniedError':
+        return "Você negou o acesso à câmera/microfone. Permita o acesso nas configurações do navegador e recarregue a página.";
+      case 'NotFoundError':
+      case 'DevicesNotFoundError':
+        return "Nenhuma câmera ou microfone foi encontrado neste dispositivo.";
+      case 'NotReadableError':
+      case 'TrackStartError':
+        return "A câmera ou microfone já está em uso por outro programa (Zoom, Teams, outra aba, etc). Feche-os e tente novamente.";
+      case 'NoDeviceAvailable':
+        return "Não conseguimos configurar sua câmera/microfone mesmo em modo de baixa qualidade. Tente reconectar o dispositivo ou usar outro navegador.";
+      default:
+        return "Erro ao acessar câmera/microfone. Verifique as permissões do navegador.";
+    }
+  };
+
   useEffect(() => {
     let isMounted = true; // 🛡️ TRAVA DO REACT STRICT MODE
 
@@ -98,20 +186,7 @@ export default function SalaAtiva({ sala, role }) {
 
     socketRef.current = io({ transports: ['websocket'] });
 
-    const configuracaoMidia = {
-      video: {
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30 }
-      },
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      }
-    };
-
-    navigator.mediaDevices.getUserMedia(configuracaoMidia).then((stream) => {
+    obterMidiaComFallback().then((stream) => {
       // 🛡️ Se o React já desmontou a tela no fundo, mata a câmera duplicada na hora!
       if (!isMounted) {
         stream.getTracks().forEach(track => track.stop());
@@ -126,27 +201,43 @@ export default function SalaAtiva({ sala, role }) {
       socketRef.current.emit('join-room', { roomId: sala.id, role });
 
       socketRef.current.on('user-connected', () => {
+        if (peerRef.current) {
+          peerRef.current.close();
+          peerRef.current = null;
+        }
+        remoteStreamRef.current = null;
+        setHasRemoteVideo(false);
+        politeRef.current = true;
         peerRef.current = createPeerConnection(stream, true);
       });
 
       socketRef.current.on('offer', async (offer) => {
         try {
           if (!peerRef.current) {
+            politeRef.current = false;
             peerRef.current = createPeerConnection(stream, false);
           }
-          if (peerRef.current.signalingState !== 'stable') return;
+          const peer = peerRef.current;
 
-          await peerRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+          const offerCollision = makingOfferRef.current || peer.signalingState !== 'stable';
+          ignoreOfferRef.current = !politeRef.current && offerCollision;
+          if (ignoreOfferRef.current) return;
 
-          // 🛡️ Drena a fila de rede assim que a porta do vídeo abrir
-          pendingCandidates.current.forEach(c => peerRef.current.addIceCandidate(new RTCIceCandidate(c)));
+          if (offerCollision) {
+            await Promise.all([
+              peer.setLocalDescription({ type: 'rollback' }),
+              peer.setRemoteDescription(new RTCSessionDescription(offer)),
+            ]);
+          } else {
+            await peer.setRemoteDescription(new RTCSessionDescription(offer));
+          }
+
+          pendingCandidates.current.forEach(c => peer.addIceCandidate(new RTCIceCandidate(c)).catch(() => { }));
           pendingCandidates.current = [];
 
-          if (peerRef.current.signalingState !== 'have-remote-offer') return;
-
-          const answer = await peerRef.current.createAnswer();
-          await peerRef.current.setLocalDescription(answer);
-          socketRef.current.emit('answer', sala.id, peerRef.current.localDescription);
+          const answer = await peer.createAnswer();
+          await peer.setLocalDescription(answer);
+          socketRef.current.emit('answer', sala.id, peer.localDescription);
         } catch (err) {
           console.warn("Oferta ignorada:", err);
         }
@@ -157,8 +248,7 @@ export default function SalaAtiva({ sala, role }) {
           if (peerRef.current && peerRef.current.signalingState !== 'stable') {
             await peerRef.current.setRemoteDescription(new RTCSessionDescription(answer));
 
-            // 🛡️ Drena a fila de rede para o Host também
-            pendingCandidates.current.forEach(c => peerRef.current.addIceCandidate(new RTCIceCandidate(c)));
+            pendingCandidates.current.forEach(c => peerRef.current.addIceCandidate(new RTCIceCandidate(c)).catch(() => { }));
             pendingCandidates.current = [];
           }
         } catch (err) {
@@ -171,17 +261,27 @@ export default function SalaAtiva({ sala, role }) {
           if (peerRef.current && peerRef.current.remoteDescription) {
             await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
           } else {
-            // 🛡️ O vídeo não tá pronto? Coloca o pacote na fila de espera!
             pendingCandidates.current.push(candidate);
           }
         } catch (err) {
           console.error("Erro no ICE:", err);
         }
       });
+
+      // 🛡️ NOVO: se o usuário plugar/desplugar webcam/mic no meio da chamada, reagimos
+      navigator.mediaDevices.addEventListener?.('devicechange', handleDeviceChange);
     }).catch(err => {
       console.error("Erro ao acessar câmera/microfone:", err);
-      alert("Por favor, permita o acesso à câmera e ao microfone para usar a sala.");
+      if (isMounted) {
+        setErroDispositivo(mensagemParaErro(err));
+      }
     });
+
+    const handleDeviceChange = () => {
+      console.log("🔌 Dispositivos de mídia mudaram (webcam/mic plugado ou removido).");
+      // Não força reconexão automática pra não interromper uma chamada em andamento;
+      // apenas loga. Se quiser trocar de dispositivo automaticamente, dá pra expandir aqui.
+    };
 
     const handleBeforeUnload = () => { if (socketRef.current) socketRef.current.emit('registrar-motivo-saida', { motivo: 'FECHOU_ABA_OU_NAVEGADOR' }); };
     const handleVisibilityChange = () => { if (socketRef.current) socketRef.current.emit('mudanca-status-app', { evento: document.hidden ? 'APP_EM_BACKGROUND' : 'APP_EM_FOCO' }); };
@@ -194,15 +294,39 @@ export default function SalaAtiva({ sala, role }) {
       clearInterval(timerCronometro);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      navigator.mediaDevices.removeEventListener?.('devicechange', handleDeviceChange);
       encerrarChamadaBrutalmente();
     };
   }, [sala, role]);
 
   const createPeerConnection = (stream, isInitiator) => {
+
     const peer = new RTCPeerConnection({
       iceServers: [
+        // 1. Tenta a conexão direta primeiro (Google STUN)
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
+
+        // 2. STUN do próprio Metered
+        { urls: 'stun:global.relay.metered.ca:80' },
+
+        // 3. TURN (O Plano B infalível que resolve o erro) - Porta 80
+        {
+          urls: 'turn:global.relay.metered.ca:80',
+          username: '96bf255e3ca657ef500a1700',
+          credential: 'dqkX8zYMC95jTmR8'
+        },
+        // 4. TURN (Plano C) - Porta 80 via TCP (para redes de empresas/escolas)
+        {
+          urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+          username: '96bf255e3ca657ef500a1700',
+          credential: 'dqkX8zYMC95jTmR8'
+        },
+        // 5. TURN (Plano D) - Porta 443 (Finge ser um site HTTPS normal)
+        {
+          urls: 'turn:global.relay.metered.ca:443',
+          username: '96bf255e3ca657ef500a1700',
+          credential: 'dqkX8zYMC95jTmR8'
+        }
       ]
     });
 
@@ -210,6 +334,9 @@ export default function SalaAtiva({ sala, role }) {
       console.log("⚡ Estado da Conexão ICE:", peer.iceConnectionState);
       if (peer.iceConnectionState === 'failed' || peer.iceConnectionState === 'disconnected') {
         console.warn("⚠️ Alerta de Rede: Conexão direta falhou. Considere usar um servidor TURN.");
+        setConexaoInstavel(true);
+      } else if (peer.iceConnectionState === 'connected' || peer.iceConnectionState === 'completed') {
+        setConexaoInstavel(false);
       }
     };
 
@@ -218,7 +345,10 @@ export default function SalaAtiva({ sala, role }) {
       if (track.kind === 'video') {
         const parameters = sender.getParameters();
         if (!parameters.encodings) parameters.encodings = [{}];
-        parameters.encodings[0].maxBitrate = 2500 * 1000;
+        // 🛡️ Bitrate reduzido de 2.5Mbps -> 1.2Mbps: menos exigente pra CPU/rede fraca
+        parameters.encodings[0].maxBitrate = 1200 * 1000;
+        // 🛡️ Prioriza manter o vídeo fluido (fps) em vez de manter resolução alta
+        parameters.encodings[0].degradationPreference = 'maintain-framerate';
         sender.setParameters(parameters).catch(() => { });
       }
     });
@@ -244,14 +374,18 @@ export default function SalaAtiva({ sala, role }) {
     };
 
     if (isInitiator) {
-      peer.createOffer().then(async (offer) => {
-        try {
-          await peer.setLocalDescription(offer);
+      makingOfferRef.current = true;
+      peer.createOffer()
+        .then(offer => peer.setLocalDescription(offer))
+        .then(() => {
           socketRef.current.emit('offer', sala.id, peer.localDescription);
-        } catch (err) {
+        })
+        .catch(() => {
           console.warn("Gatilho de oferta ignorado");
-        }
-      });
+        })
+        .finally(() => {
+          makingOfferRef.current = false;
+        });
     }
 
     return peer;
@@ -315,8 +449,31 @@ export default function SalaAtiva({ sala, role }) {
         <span className={`font-mono text-[12px] tabular-nums ${tempoCritico ? 'text-[#ff8a80]' : 'text-[#edeff3]'}`}>{tempoFaltante} restantes</span>
       </div>
 
+      {/* 🛡️ NOVO: aviso de conexão instável */}
+      {conexaoInstavel && (
+        <div className="absolute top-16 left-1/2 z-40 -translate-x-1/2 rounded-full border border-[#5c2b26] bg-[#1c0e0c]/90 px-4 py-1.5 backdrop-blur-md shadow-lg">
+          <span className="font-mono text-[11px] text-[#ff8a80]">⚠ Conexão instável — tentando reconectar…</span>
+        </div>
+      )}
+
+      {/* 🛡️ NOVO: erro de dispositivo (câmera/mic) exibido na tela, não só via alert */}
+      {erroDispositivo && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[#0a0c10] px-6 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#3a1f1c] text-[#ff8a80]">
+            <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          </div>
+          <p className="max-w-sm font-sans text-[14px] text-[#edeff3] leading-relaxed">{erroDispositivo}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-md border border-[#2e3540] bg-transparent px-4 py-2 text-[13px] font-medium text-[#c8cdd6] transition-colors hover:bg-[#1c2129]"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
       {/* aguardando participante */}
-      {!hasRemoteVideo && (
+      {!hasRemoteVideo && !erroDispositivo && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[#0a0c10]">
           <span className="relative flex h-2.5 w-2.5"><span className="psiu-ping absolute inline-flex h-full w-full rounded-full bg-[#e6c874] opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#e6c874]" /></span>
           <p className="font-mono text-[13px] tracking-wide text-[#7d8697]">Aguardando o outro participante entrar…</p>
